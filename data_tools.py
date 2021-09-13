@@ -148,7 +148,8 @@ def blend_noise_randomly(voice, noise, nb_samples, frame_length):
 
 def split_into_one_second(sound_data, save_dir, sample_rate, snr, category):
 
-    #audio, sr = librosa.load(sound_data, sr=sample_rate)
+    # audio, sr = librosa.load(sound_data, sr=sample_rate)
+    # get_duration: get the length of the secs
     total_duration = librosa.get_duration(y=sound_data, sr=sample_rate)
     splitted_audio_list = []
     save_corpped_list = []
@@ -158,6 +159,7 @@ def split_into_one_second(sound_data, save_dir, sample_rate, snr, category):
             count += 1
             start_time = time
             end_time = time + 80000
+            # print(total_duration, start_time, end_time)
             SplittedAudio = sound_data[start_time:end_time]
             if(int(SplittedAudio.shape[0]) < 80000):
                 continue
@@ -192,8 +194,12 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio, i, path_save_i
     stftaudio_magnitude_db = librosa.amplitude_to_db(
         stftaudio_magnitude, ref=np.max)
 
+    # print(stftaudio_magnitude)
+    # print(np.abs(stftaudio))
+
     plt.imsave(os.path.join(path_save_image, str(i) + ".png"),
                stftaudio_magnitude_db, cmap='jet')
+
     return stftaudio_magnitude_db, stftaudio_phase
 
 
@@ -241,6 +247,8 @@ def audio_files_add_to_numpy(list_audio_files, sample_rate):
     list_sound = []
 
     for file in list_audio_files:
+        # y: [-2.4414062e-04 -3.0517578e-05  1.8310547e-04 ...  1.2207031e-04
+        # 9.1552734e-05  1.2207031e-04]
         y, sr = librosa.load(file, sr=sample_rate)
 
         list_sound.extend(y)
@@ -252,6 +260,8 @@ def audio_files_add_to_numpy(list_audio_files, sample_rate):
 
 def blend_noise_voice(voice, noise, nb_samples, frame_length):
 
+    # If the length of voice is longer than the noise
+    # use the length of the noise as the length of the produced noisy voice
     if (voice.shape[0] >= noise.shape[0]):
         prod_noisy_voice = np.zeros((noise.shape[0]))
         prod_noise = np.zeros((noise.shape[0]))

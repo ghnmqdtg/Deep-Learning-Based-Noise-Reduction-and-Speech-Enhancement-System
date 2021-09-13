@@ -6,7 +6,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.utils import HDF5Matrix
 import h5py
 from model_DDAE import DDAE
-from data_tools import scaled_in, scaled_ou
+# from data_tools import scaled_in, scaled_ou
 import os
 
 # for tf 1.xx
