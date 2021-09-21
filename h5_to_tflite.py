@@ -1,18 +1,14 @@
 # import tensorboard
 import tensorflow as tf
-from tensorflow.keras.models import load_model
+import config_params
 
-# print(tf.__version__)
-# print(help(tf.lite.TFLiteConverter))
+noise_cls = ["Household_Appliance", "Vechicles"]
 
-model_path = './DDAE_Household/Train/weights/model_DDAE.h5'
-dest_path = './DDAE_Household/Train/weights/model.tflite'
-model = load_model(model_path)
+for cls in noise_cls:
+    model_path = f'./Train/{cls}/weights/DDAE_{config_params.MODEL}_{cls}.h5'
+    dest_path = f'./tflite_files/DDAE_{config_params.MODEL}_{cls}.tflite'
 
-# Convert the model.
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-tflite_model = converter.convert()
-
-# Save the model.
-with open(dest_path, 'wb') as f:
-    f.write(tflite_model)
+    model = tf.keras.models.load_model(model_path)
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    # Save the converted model to dest_path
+    open(dest_path, 'wb').write(converter.convert())

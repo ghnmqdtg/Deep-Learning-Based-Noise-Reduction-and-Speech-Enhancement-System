@@ -7,6 +7,7 @@ from scipy import stats
 import numpy as np
 import h5py
 import soundfile as sf
+import config_params
 
 
 def save_h5(h5_file, input_data, target):
@@ -22,7 +23,7 @@ def save_h5(h5_file, input_data, target):
         dataset = h5_file[target]
         # print(dataset)
     len_old = dataset.shape[0]
-    len_new = len_old+input_data.shape[0]
+    len_new = len_old + input_data.shape[0]
     shape_list[0] = len_new
     dataset.resize(tuple(shape_list))
     # Append new data to dataset
@@ -51,17 +52,16 @@ def createpath(path):
         os.makedirs(path)
 
 
-def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir, path_save_time_serie, path_save_sound, path_save_spectrogram, splitted_noisy_dir, splitted_voice_dir,
-                path_save_noisy_image, path_save_voice_image, sample_rate, min_duration, frame_length, hop_length_frame, hop_length_frame_noise, nb_samples, n_fft, hop_length_fft):
+def create_data():
 
-    createpath(snr_based_dir)
-    createpath(dB_noise_dir)
-    createpath(dB_voice_dir)
-    createpath(path_save_sound)
-    createpath(path_save_time_serie)
-    createpath(path_save_spectrogram)
-    createpath(path_save_noisy_image)
-    createpath(path_save_voice_image)
+    createpath(config_params.PATH_DIR_TRAIN_SNR_BASED)
+    createpath(config_params.PATH_DIR_TRAIN_NOISE_dB)
+    createpath(config_params.PATH_DIR_TRAIN_VOICE_dB)
+    createpath(config_params.PATH_DIR_TRAIN_BLENDED_SOUND)
+    createpath(config_params.PATH_DIR_TRAIN_TIME_SERIES)
+    createpath(config_params.PATH_DIR_TRAIN_DATASET)
+    createpath(config_params.PATH_DIR_TRAIN_IMAGE_NOISY)
+    createpath(config_params.PATH_DIR_TRAIN_IMAGE_VOICE)
 
     # list to save file names
     list_noise_files = []
@@ -73,7 +73,8 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
 
     print("Loading...")
     # Load noise file paths
-    for root, dirs, files in os.walk(noise_dir):
+    for root, dirs, files in os.walk(config_params.PATH_DIR_NOISE_CLASS):
+        print(config_params.PATH_DIR_NOISE_CLASS)
         if len(files) == 0:
             continue
 
@@ -83,7 +84,7 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
 
     # Load voice filenames
     # list_voice_dict == {"TRAIN": [voice file paths]}
-    for root, dirs, files in os.walk(voice_dir):
+    for root, dirs, files in os.walk(config_params.PATH_DIR_VOICE_SOURCE):
         if len(files) == 0:
             continue
 
@@ -101,30 +102,37 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
             continue
 
         # voice_path: ./Train/Time_serie/TRAIN_voice.wav
-        voice_path = path_save_time_serie+str(keys)+'_voice'+'.wav'
+        voice_path = config_params.PATH_DIR_TRAIN_TIME_SERIES+str(keys)+'_voice'+'.wav'
         # list_voice_files: ['./Train/Time_serie/TRAIN_voice.wav']
         list_voice_files.append(voice_path)
         # Use librosa.load() to load the voice files in the list
-        voice = audio_files_add_to_numpy(values, sample_rate)
+        voice = audio_files_add_to_numpy(values, config_params.SAMPLE_RATE)
         # Save as a single file
-        sf.write(voice_path, voice, sample_rate, 'PCM_24')
+        sf.write(voice_path, voice, config_params.SAMPLE_RATE, 'PCM_24')
+
+    # Remove unused dict
+    list_voice_dict.clear()
 
     target_dBFS = -30.0
     # Normalize the audio files
-    list_dB_noise_file = scale_dB(list_noise_files, dB_noise_dir, target_dBFS)
-    list_dB_voice_file = scale_dB(list_voice_files, dB_voice_dir, target_dBFS)
+    list_dB_noise_file = scale_dB(list_noise_files, config_params.PATH_DIR_TRAIN_NOISE_dB, target_dBFS)
+    list_dB_voice_file = scale_dB(list_voice_files, config_params.PATH_DIR_TRAIN_VOICE_dB, target_dBFS)
+
+    # Remove unused list
+    list_noise_files.clear()
+    list_voice_files.clear()
 
     print("Setting snr...")
     # SNR = [20, 10, 0, -10, -20]
     SNR = [15, 10, 5, 0, -5, -10]
     # Here we only scale the noise
     for snr in SNR:
-        createpath(splitted_noisy_dir+str(snr)+'/')
-        createpath(splitted_voice_dir+str(snr)+'/')
-        # snr_based_dir: the path to save the mixed audio files
+        createpath(config_params.PATH_DIR_TRAIN_SPLIT_NOISY+str(snr)+'/')
+        createpath(config_params.PATH_DIR_TRAIN_SPLIT_VOICE+str(snr)+'/')
+        # config_params.PATH_DIR_TRAIN_SNR_BASED: the path to save the mixed audio files
         # snr_base_noise_file: the path of the output mixed audio files
         snr_base_noise_file = set_snr(
-            list_dB_voice_file, list_dB_noise_file, snr, snr_based_dir, sample_rate)
+            list_dB_voice_file, list_dB_noise_file, snr, config_params.PATH_DIR_TRAIN_SNR_BASED, config_params.SAMPLE_RATE)
         # The list to save these paths(every snr_base_noise_file)
         list_noise_snr_files.append(snr_base_noise_file)
 
@@ -132,14 +140,14 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
 
         cropped_list_noisy = []
         cropped_list_voice = []
-        snr = snr_noise_data.split('_')[1].split('/')[1]
+        snr = snr_noise_data.split('/')[-1].split('_')[0]
         print('snr:', snr)
 
         for voice_data in list_dB_voice_file:
             list_noise = []
             # Load files as numpy array
-            noise = audio_files_to_numpy(snr_noise_data, sample_rate)
-            voice = audio_files_to_numpy(voice_data, sample_rate)
+            noise = audio_files_to_numpy(snr_noise_data, config_params.SAMPLE_RATE)
+            voice = audio_files_to_numpy(voice_data, config_params.SAMPLE_RATE)
 
             repeat_time = len(voice)//len(noise)
 
@@ -149,38 +157,38 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
             array_noise = np.array(list_noise)
 
             print("Creating blended audio...")
-            # nb_samples and frame_length aren't used in blend_noise_voice()
+            # NB_SAMPLES and FRAME_SIZE aren't used in blend_noise_voice()
             prod_voice, prod_noise, prod_noisy_voice = blend_noise_voice(
-                voice, array_noise, nb_samples, frame_length)
+                voice, array_noise)
 
             # category: voice
-            category = voice_data.split('_')[-2].split('/')[1]
+            category = voice_data.split('/')[-2]
 
-            sf.write(path_save_sound + str(category) + '_' + str(snr) +
-                     '_noisy.wav', prod_noise, sample_rate, 'PCM_24')
-            sf.write(path_save_sound + str(category) + '_' + str(snr) +
-                     '_voice.wav', prod_voice, sample_rate, 'PCM_24')
-            sf.write(path_save_sound + str(category) + '_' + str(snr) +
-                     '_noisy_voice_long.wav', prod_noisy_voice, sample_rate, 'PCM_24')
+            sf.write(config_params.PATH_DIR_TRAIN_BLENDED_SOUND + str(category) + '_' + str(snr) +
+                     '_noisy.wav', prod_noise, config_params.SAMPLE_RATE, 'PCM_24')
+            sf.write(config_params.PATH_DIR_TRAIN_BLENDED_SOUND + str(category) + '_' + str(snr) +
+                     '_voice.wav', prod_voice, config_params.SAMPLE_RATE, 'PCM_24')
+            sf.write(config_params.PATH_DIR_TRAIN_BLENDED_SOUND + str(category) + '_' + str(snr) +
+                     '_noisy_voice_long.wav', prod_noisy_voice, config_params.SAMPLE_RATE, 'PCM_24')
 
             print("Splitting raw data...")
             cropped_list_noisy.extend(split_into_one_second(
-                prod_noisy_voice, splitted_noisy_dir, sample_rate, snr, category))
+                prod_noisy_voice, config_params.PATH_DIR_TRAIN_SPLIT_NOISY, config_params.SAMPLE_RATE, snr, category))
             cropped_list_voice.extend(split_into_one_second(
-                prod_voice, splitted_voice_dir, sample_rate, snr, category))
+                prod_voice, config_params.PATH_DIR_TRAIN_SPLIT_VOICE, config_params.SAMPLE_RATE, snr, category))
 
             # prod_noisy_voice:  [0.00471174 0.00608557 0.00568011 ... 0.01218804 0.01283987 0.        ]
             # cropped_list_noisy:  [array([ 0.00471174,  0.00608557,  0.00568011, ...,  0.00347486,
 
         print("Creating Amplitude and phase...")
         # int(511/2) + 1 = 256
-        dim_square_spec = int(n_fft / 2) + 1
+        dim_square_spec = int(config_params.N_FFT / 2) + 1,
 
         cropped_array_noisy = np.array(cropped_list_noisy)
         cropped_array_voice = np.array(cropped_list_voice)
 
         # print('test file saved')
-        # sf.write('./test.wav', cropped_array_noisy, sample_rate, 'PCM_24')
+        # sf.write('./test.wav', cropped_array_noisy, SAMPLE_RATE, 'PCM_24')
 
         print("cropped_array_noisy:",
               cropped_array_noisy.shape, type(cropped_array_noisy))
@@ -188,11 +196,11 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
 
         # (numpy_audio, 256, 511, 313, dir to save image)
         m_amp_db_voice,  m_pha_voice = numpy_audio_to_matrix_spectrogram(
-            cropped_array_voice, dim_square_spec, n_fft, hop_length_fft, path_save_voice_image)
+            cropped_array_voice, dim_square_spec, config_params.N_FFT, config_params.HOP_LENGTH_FFT, config_params.PATH_DIR_TRAIN_IMAGE_VOICE)
         # m_amp_db_noise,  m_pha_noise = numpy_audio_to_matrix_spectrogram(
-        #     prod_noise, dim_square_spec, n_fft, hop_length_fft)
+        #     prod_noise, dim_square_spec, N_FFT, HOP_LENGTH_FFT)
         m_amp_db_noisy_voice,  m_pha_noisy_voice = numpy_audio_to_matrix_spectrogram(
-            cropped_array_noisy, dim_square_spec, n_fft, hop_length_fft, path_save_noisy_image)
+            cropped_array_noisy, dim_square_spec, config_params.N_FFT, config_params.HOP_LENGTH_FFT, config_params.PATH_DIR_TRAIN_IMAGE_NOISY)
 
         m_amp_db_voice_scaled = m_amp_db_noisy_voice - m_amp_db_voice
 
@@ -214,64 +222,22 @@ def create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir,
             m_amp_db_noisy_voice_scaled, m_amp_db_voice_scaled, test_size=0.10, random_state=44)
 
         # 'a', Read/write if exists, create otherwise
-        save_h5(h5py.File(path_save_spectrogram + "amp_db.h5", 'a'),
+        save_h5(h5py.File(f'{config_params.PATH_DIR_TRAIN_DATASET}/amp_db.h5', 'a'),
                 input_data=X_train, target='trainnoise')
-        save_h5(h5py.File(path_save_spectrogram + "amp_db.h5", 'a'),
+        save_h5(h5py.File(f'{config_params.PATH_DIR_TRAIN_DATASET}/amp_db.h5', 'a'),
                 input_data=y_train, target='trainclean')
-        save_h5(h5py.File(path_save_spectrogram + "amp_db.h5", 'a'),
+        save_h5(h5py.File(f'{config_params.PATH_DIR_TRAIN_DATASET}/amp_db.h5', 'a'),
                 input_data=X_test, target='valnoise')
-        save_h5(h5py.File(path_save_spectrogram + "amp_db.h5", 'a'),
+        save_h5(h5py.File(f'{config_params.PATH_DIR_TRAIN_DATASET}/amp_db.h5', 'a'),
                 input_data=y_test, target='valclean')
 
-        save_h5(h5py.File(path_save_spectrogram + "pha_db.h5", 'a'),
+        save_h5(h5py.File(f'{config_params.PATH_DIR_TRAIN_DATASET}/pha_db.h5', 'a'),
                 input_data=m_pha_voice, target='trainclean')
-        save_h5(h5py.File(path_save_spectrogram + "pha_db.h5", 'a'),
+        save_h5(h5py.File(f'{config_params.PATH_DIR_TRAIN_DATASET}/pha_db.h5', 'a'),
                 input_data=m_pha_noisy_voice, target='trainnoise')
-
-        # np.save(path_save_spectrogram + "voice_amp_db.npy",np.append(voice_amp_db,m_amp_db_voice))
-        # np.save(path_save_spectrogram + "noisy_voice_amp_db.npy",np.append(noisy_voice_amp_db,m_amp_db_noisy_voice))
-
-        # np.save(path_save_spectrogram + "voice_pha_db.npy",np.append(voice_pha_db,m_pha_voice))
-        # np.save(path_save_spectrogram + "noisy_voice_pha_db.npy",np.append(noisy_voice_pha_db,m_pha_noisy_voice))
 
         print("\n")
 
-    # np.save(path_save_time_serie + 'voice_timeserie', prod_voice)
-    # np.save(path_save_time_serie + 'noise_timeserie', prod_noise)
-    # np.save(path_save_time_serie + 'noisy_voice_timeserie', prod_noisy_voice)
-
-    '''
-    np.save(path_save_spectrogram + 'voice_amp_db', m_amp_db_voice)
-    #np.save(path_save_spectrogram + 'noise_amp_db', m_amp_db_noise)
-    np.save(path_save_spectrogram + 'noisy_voice_amp_db', m_amp_db_noisy_voice)
-
-    np.save(path_save_spectrogram + 'voice_pha_db', m_pha_voice)
-    #np.save(path_save_spectrogram + 'noise_pha_db', m_pha_noise)
-    np.save(path_save_spectrogram + 'noisy_voice_pha_db', m_pha_noisy_voice)
-    '''
-
 
 if __name__ == '__main__':
-    noise_dir = './NOISE/Household_Appliance/'
-    voice_dir = './TIMIT_CONVERTED_NORMALIZED/TRAIN/'
-    snr_based_dir = './Train/Noise_SNR/'
-    dB_noise_dir = './Train/scaled_dB/noise/'
-    dB_voice_dir = './Train/scaled_dB/voice/'
-    path_save_sound = './Train/sound/'
-    splitted_noisy_dir = './Train/splitted/noisy/'
-    splitted_voice_dir = './Train/splitted/voice/'
-    path_save_time_serie = './Train/Time_serie/'
-    path_save_spectrogram = './Train/spectrogram/'
-    path_save_noisy_image = './Train/noisy_image/'
-    path_save_voice_image = './Train/voice_image/'
-    sample_rate = 16000
-    min_duration = 1.0
-    frame_length = 18000
-    hop_length_frame_voice = 250
-    hop_length_frame_noise = 250
-    nb_samples = 50
-    n_fft = 511
-    hop_length_fft = 313
-
-    create_data(noise_dir, voice_dir, snr_based_dir, dB_noise_dir, dB_voice_dir, path_save_time_serie, path_save_sound, path_save_spectrogram, splitted_noisy_dir, splitted_voice_dir,
-                path_save_noisy_image, path_save_voice_image, sample_rate, min_duration, frame_length, hop_length_frame_voice, hop_length_frame_noise, nb_samples, n_fft, hop_length_fft)
+    create_data()

@@ -6,6 +6,7 @@ import scipy
 from matplotlib import pyplot as plt
 from pydub import AudioSegment
 import soundfile as sf
+import config_params
 
 
 def createpath(path):
@@ -39,6 +40,7 @@ def scale_dB(list_audio_files, dB_audio_dir, target_dBFS):
 
         scaled_audio = sound.apply_gain(change_in_dBFS)
         list_dB_sound.append(dB_audio_dir+audio_file.split('/')[-1])
+
         scaled_audio.export(
             dB_audio_dir+audio_file.split('/')[-1], format="wav")
 
@@ -86,6 +88,7 @@ def set_snr(list_voice_files, list_noise_files, snr, snr_based_dir, sample_rate)
             scaler = np.sqrt(power1 / (power2 * 10.**(snr/10.)))
             prescaler = 1
 
+        
         snr_base_noise_file = snr_based_dir+str(snr)+'_noisy'+'.wav'
         sf.write(snr_base_noise_file, scaler * noise, sample_rate, 'PCM_24')
 
@@ -155,24 +158,25 @@ def split_into_one_second(sound_data, save_dir, sample_rate, snr, category):
     save_corpped_list = []
     count = 0
     if(category):
-        for time in range(0, int(total_duration)*16000, 80000):
+        for time in range(0, int(total_duration)*16000, config_params.SLICE_LENGTH):
             count += 1
             start_time = time
-            end_time = time + 80000
+            end_time = time + config_params.SLICE_LENGTH
             # print(total_duration, start_time, end_time)
             SplittedAudio = sound_data[start_time:end_time]
-            if(int(SplittedAudio.shape[0]) < 80000):
+            if(int(SplittedAudio.shape[0]) < config_params.SLICE_LENGTH):
                 continue
             splitted_audio_list.append(SplittedAudio)
+            # print(save_dir, snr, category)
             sf.write(save_dir + str(snr) + '/' + str(category) + '_' +
                      str(count)+'.wav', SplittedAudio, sample_rate, 'PCM_24')
     else:
-        for time in range(0, int(total_duration)*16000, 80000):
+        for time in range(0, int(total_duration)*16000, config_params.SLICE_LENGTH):
             count += 1
             start_time = time
-            end_time = time + 80000
+            end_time = time + config_params.SLICE_LENGTH
             SplittedAudio = sound_data[start_time:end_time]
-            if(int(SplittedAudio.shape[0]) < 80000):
+            if(int(SplittedAudio.shape[0]) < config_params.SLICE_LENGTH):
                 continue
             splitted_audio_list.append(SplittedAudio)
             sf.write(save_dir + str(snr) + '/' + str(count) + '.wav',
@@ -189,7 +193,11 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio, i, path_save_i
 
     stftaudio = librosa.stft(
         audio, n_fft=n_fft, hop_length=hop_length_fft, window=scipy.signal.hamming)
+
     stftaudio_magnitude, stftaudio_phase = librosa.magphase(stftaudio)
+
+    stftaudio_magnitude = stftaudio_magnitude[:, 1:-1]
+    stftaudio_phase = stftaudio_phase[:, 1:-1]
 
     stftaudio_magnitude_db = librosa.amplitude_to_db(
         stftaudio_magnitude, ref=np.max)
@@ -199,6 +207,9 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio, i, path_save_i
 
     plt.imsave(os.path.join(path_save_image, str(i) + ".png"),
                stftaudio_magnitude_db, cmap='jet')
+
+    # print(stftaudio_magnitude_db.shape, stftaudio_phase.shape)
+    # print(stftaudio_magnitude_db.dtype, stftaudio_phase.dtype)
 
     return stftaudio_magnitude_db, stftaudio_phase
 
@@ -219,13 +230,20 @@ def numpy_audio_to_matrix_spectrogram(numpy_audio, dim_square_spec, n_fft, hop_l
     '''
     nb_audio = numpy_audio.shape[0]
 
-    m_mag_db = np.zeros((nb_audio, dim_square_spec, dim_square_spec))
+    mag_tmp, _ = audio_to_magnitude_db_and_phase(
+        n_fft, hop_length_fft, numpy_audio[0], 0, path_save_image)
+
+    mag_shape = mag_tmp.shape
+
+    m_mag_db = np.zeros((nb_audio, mag_shape[0], mag_shape[1]))
     m_phase = np.zeros(
-        (nb_audio, dim_square_spec, dim_square_spec), dtype=complex)
+        (nb_audio, mag_shape[0], mag_shape[1]), dtype=complex)
 
     for i in range(nb_audio):
         m_mag_db[i, :, :], m_phase[i, :, :] = audio_to_magnitude_db_and_phase(
             n_fft, hop_length_fft, numpy_audio[i], i, path_save_image)
+
+    # print(m_mag_db.shape)
 
     return m_mag_db, m_phase
 
@@ -249,7 +267,8 @@ def audio_files_add_to_numpy(list_audio_files, sample_rate):
     for file in list_audio_files:
         # y: [-2.4414062e-04 -3.0517578e-05  1.8310547e-04 ...  1.2207031e-04
         # 9.1552734e-05  1.2207031e-04]
-        y, sr = librosa.load(file, sr=sample_rate)
+        # y, sr = librosa.load(file, sr=sample_rate)
+        y, sr = librosa.load(file, sr=None)
 
         list_sound.extend(y)
 
@@ -258,7 +277,7 @@ def audio_files_add_to_numpy(list_audio_files, sample_rate):
     return array_sound
 
 
-def blend_noise_voice(voice, noise, nb_samples, frame_length):
+def blend_noise_voice(voice, noise):
 
     # If the length of voice is longer than the noise
     # use the length of the noise as the length of the produced noisy voice
@@ -303,13 +322,16 @@ def magnitude_db_and_phase_to_audio(frame_length, hop_length_fft, stftaudio_magn
     return audio_reconstruct
 
 
-def matrix_spectrogram_to_numpy_audio(m_mag_db, m_phase, frame_length, hop_length_fft, fix_length):
+def matrix_spectrogram_to_numpy_audio(m_mag_db, m_phase, frame_length, hop_length_fft, fix_length, path_save_image):
 
     list_audio = []
 
     nb_spec = m_mag_db.shape[0]
 
     for i in range(nb_spec):
+
+        plt.imsave(os.path.join(path_save_image, str(i) + ".png"),
+                   m_mag_db[i], cmap='jet')
 
         audio_reconstruct = magnitude_db_and_phase_to_audio(
             frame_length, hop_length_fft, m_mag_db[i], m_phase[i])
