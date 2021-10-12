@@ -44,7 +44,7 @@ def DDAE(input_size=(256, 256)):
             BatchNormalization(),
             Activation('relu'),
             # Dropout(0.5),
-            Dense(124),
+            Dense(126),
             # BatchNormalization(),
             # Activation('relu'),
             # Dropout(0.5),
@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     train, test = Train().load_data()
 
-    model = DDAE((129, 124))
+    model = DDAE((129, 126))
     model.summary()
 
     # Set checkpoint

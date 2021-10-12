@@ -196,8 +196,8 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio, i, path_save_i
 
     stftaudio_magnitude, stftaudio_phase = librosa.magphase(stftaudio)
 
-    stftaudio_magnitude = stftaudio_magnitude[:, 1:-1]
-    stftaudio_phase = stftaudio_phase[:, 1:-1]
+    stftaudio_magnitude = stftaudio_magnitude[:, 1:-2]
+    stftaudio_phase = stftaudio_phase[:, 1:-2]
 
     stftaudio_magnitude_db = librosa.amplitude_to_db(
         stftaudio_magnitude, ref=np.max)
@@ -309,7 +309,7 @@ def inv_scaled_ou(matrix_spec):
     return matrix_spec
 
 
-def magnitude_db_and_phase_to_audio(frame_length, hop_length_fft, stftaudio_magnitude_db, stftaudio_phase):
+def magnitude_db_and_phase_to_audio(hop_length_fft, stftaudio_magnitude_db, stftaudio_phase):
 
     stftaudio_magnitude_rev = librosa.db_to_amplitude(
         stftaudio_magnitude_db, ref=1.0)
@@ -317,12 +317,11 @@ def magnitude_db_and_phase_to_audio(frame_length, hop_length_fft, stftaudio_magn
     audio_reverse_stft = stftaudio_magnitude_rev * stftaudio_phase
     audio_reconstruct = librosa.core.istft(
         audio_reverse_stft, hop_length=hop_length_fft, window=scipy.signal.hamming, center=True)
-    #audio_reconstruct = librosa.core.istft(audio_reverse_stft, hop_length=hop_length_fft)
 
     return audio_reconstruct
 
 
-def matrix_spectrogram_to_numpy_audio(m_mag_db, m_phase, frame_length, hop_length_fft, fix_length, path_save_image):
+def matrix_spectrogram_to_numpy_audio(m_mag_db, m_phase, hop_length_fft, fix_length, path_save_image):
 
     list_audio = []
 
@@ -334,7 +333,7 @@ def matrix_spectrogram_to_numpy_audio(m_mag_db, m_phase, frame_length, hop_lengt
                    m_mag_db[i], cmap='jet')
 
         audio_reconstruct = magnitude_db_and_phase_to_audio(
-            frame_length, hop_length_fft, m_mag_db[i], m_phase[i])
+            hop_length_fft, m_mag_db[i], m_phase[i])
 
         audio_reconstruct = librosa.util.fix_length(
             audio_reconstruct, fix_length)  # ADD

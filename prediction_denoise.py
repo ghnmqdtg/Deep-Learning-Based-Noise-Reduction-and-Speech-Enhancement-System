@@ -104,12 +104,16 @@ def prediction():
 
         cropped_array_noisy = np.array(cropped_list_noisy)
         cropped_array_voice = np.array(cropped_list_voice)
+
+        # print(cropped_list_voice)
+        # print(cropped_array_voice)
         # sf.write(config_params.PATH_DIR_PREDICT_ROOT + 'Clean.wav',
         #          cropped_array_voice, sample_rate, 'PCM_24')
 
         print("cropped_array_noisy:", cropped_array_noisy.shape)
         print("cropped_array_voice:", cropped_array_voice.shape)
         fix_length = cropped_array_noisy.shape[1]
+        print(config_params.HOP_LENGTH_FFT, fix_length)
 
         m_amp_db_voice,  m_pha_voice = numpy_audio_to_matrix_spectrogram(
             cropped_array_voice, dim_square_spec, config_params.N_FFT, config_params.HOP_LENGTH_FFT, config_params.PATH_DIR_SAVE_IMAGE_VOICE)
@@ -128,7 +132,7 @@ def prediction():
         print("X_denoise:", X_denoise.shape)
 
         audio_denoise_recons = matrix_spectrogram_to_numpy_audio(
-            X_denoise, m_pha_noisy_voice, config_params.FRAME_SIZE, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_SAVE_IMAGE_DENOISE)
+            X_denoise, m_pha_noisy_voice, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_SAVE_IMAGE_DENOISE)
         config_params.NB_SAMPLES = audio_denoise_recons.shape[0]
 
         #denoise_long = audio_denoise_recons.reshape(1, config_params.NB_SAMPLES * config_params.FRAME_SIZE)*10
