@@ -14,7 +14,7 @@ def createpath(path):
         os.makedirs(path)
 
 
-def scale_dB(list_audio_files, dB_audio_dir, target_dBFS):
+def scale_dB(list_audio_files, dB_audio_dir, target_dBFS, purepath=False):
     '''
     Description:
         1. Load audio files by parsing the `list_audio_files`
@@ -41,8 +41,12 @@ def scale_dB(list_audio_files, dB_audio_dir, target_dBFS):
         scaled_audio = sound.apply_gain(change_in_dBFS)
         list_dB_sound.append(dB_audio_dir+audio_file.split('/')[-1])
 
-        scaled_audio.export(
-            dB_audio_dir+audio_file.split('/')[-1], format="wav")
+        if (not purepath):
+            scaled_audio.export(
+                dB_audio_dir+audio_file.split('/')[-1], format="wav")
+        else:
+            scaled_audio.export(
+                dB_audio_dir + "/" + audio_file.split('/')[-1], format="wav")
 
     return list_dB_sound
 

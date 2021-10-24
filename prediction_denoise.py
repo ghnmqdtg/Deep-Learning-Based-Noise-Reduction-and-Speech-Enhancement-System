@@ -84,11 +84,11 @@ def prediction():
         print("Blending...")
         prod_voice, prod_noise, prod_noisy_voice = blend_noise_voice(voice, noise)
 
-        sf.write(config_params.PATH_DIR_SAVE_NOISY + 'noisy.wav',
+        sf.write(config_params.PATH_DIR_SAVE_NOISY + str(snr) + '_noisy.wav',
                  prod_noise, config_params.SAMPLE_RATE, 'PCM_24')
-        sf.write(config_params.PATH_DIR_SAVE_NOISY + 'voice.wav',
+        sf.write(config_params.PATH_DIR_SAVE_NOISY + str(snr) + '_voice.wav',
                  prod_voice, config_params.SAMPLE_RATE, 'PCM_24')
-        sf.write(config_params.PATH_DIR_SAVE_NOISY + 'noisy_voice_long.wav',
+        sf.write(config_params.PATH_DIR_SAVE_NOISY + str(snr) + '_noisy_voice_long.wav',
                  prod_noisy_voice, config_params.SAMPLE_RATE, 'PCM_24')
 
         cropped_list_noisy = []
@@ -136,7 +136,7 @@ def prediction():
         config_params.NB_SAMPLES = audio_denoise_recons.shape[0]
 
         #denoise_long = audio_denoise_recons.reshape(1, config_params.NB_SAMPLES * config_params.FRAME_SIZE)*10
-        sf.write(config_params.PATH_DIR_PREDICT_ROOT + snr+'_' + config_params.PATH_PREDICT_OUTPUT_NAME,
+        sf.write(config_params.PATH_DIR_PREDICT_ROOT + snr + '_' + config_params.PATH_PREDICT_OUTPUT_NAME,
                  audio_denoise_recons, config_params.SAMPLE_RATE, 'PCM_24')
 
         output_audio_list = []
