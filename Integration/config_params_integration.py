@@ -11,8 +11,9 @@ import config_params
 DEV = True
 
 # Inference
-NC_PATH = './Integration/model_files/model_0928_3_cats_equal_samples.h5'
-NOISE_LIST = ['Household_Appliance', "Vechicles"]
+# NC_PATH = './Integration/model_files/model_0928_3_cats_equal_samples.h5'
+NC_PATH = './Integration/model_files/model_1102_4_cats.h5'
+NOISE_LIST = ['Household_Appliance', 'TVnRadio', 'Vechicles', 'Verbal_Human']
 DDAE_PATHS = [
     f'./Integration//model_files/DDAE_{config_params.MODEL}_{cls}.h5' for cls in NOISE_LIST]
 

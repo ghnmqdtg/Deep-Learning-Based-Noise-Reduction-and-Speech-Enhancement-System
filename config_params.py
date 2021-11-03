@@ -1,6 +1,8 @@
 # Settings for preparing the dataset
 # NOISE_CLASS = 'Household_Appliance'
-NOISE_CLASS = 'Vechicles'
+# NOISE_CLASS = 'TVnRadio'
+# NOISE_CLASS = 'Vechicles'
+NOISE_CLASS = 'Verbal_Human'
 PATH_DIR_NOISE_SOURCE = './NOISE'
 PATH_DIR_TRAIN_ROOT = f'./Train/{NOISE_CLASS}'
 

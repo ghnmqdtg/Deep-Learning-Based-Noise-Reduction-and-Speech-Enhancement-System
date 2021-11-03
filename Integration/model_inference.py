@@ -94,11 +94,13 @@ if __name__ == "__main__":
     if (config_params.DEV == True):
         print(result, stft_mag.shape, stft_phase.shape)
         if index == 0:
-            print("Crowd")
-        elif index == 1:
             print("Household_Appliance")
+        elif index == 1:
+            print("TVnRadio")
         elif index == 2:
-            print("Traffic")
+            print("Vechicles")
+        elif index == 3:
+            print("Verbal_Human")
 
     stft_mag_db = librosa.amplitude_to_db(
         stft_mag, ref=np.max)
