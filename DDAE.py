@@ -182,7 +182,9 @@ if __name__ == '__main__':
     plt.plot(range(len(val_mse)), val_mse, label='Validation')
     plt.title('MSE Loss')
     plt.legend(loc='best')
-    plt.savefig(f'./{config_params.MODEL_NAME}.png', dpi=300, format='png')
+    plt.savefig(
+        f'./Training_results/{config_params.MODEL_NAME}.png', dpi=300, format='png')
     plt.close()
-    print(f'Result saved into ./{config_params.MODEL_NAME}.png')
+    print(
+        f'Result saved into ./Training_results/{config_params.MODEL_NAME}.png')
     plt.show()
