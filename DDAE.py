@@ -1,5 +1,3 @@
-import h5py
-import numpy as np
 import config_params
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -87,8 +85,8 @@ def DDAE(input_size=(256, 256)):
         staircase=True)
     if (config_params.OPTIMIZER == "Adam"):
         optimizer = Adam(learning_rate=0.01, beta_1=0.9, beta_2=0.999,
-        # optimizer = Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999,
-                        epsilon=1e-07, decay=0.0, amsgrad=True, name='Adam')
+                         # optimizer = Adam(learning_rate=lr_schedule, beta_1=0.9, beta_2=0.999,
+                         epsilon=1e-07, decay=0.0, amsgrad=True, name='Adam')
     elif (config_params.OPTIMIZER == "RMSprop"):
         optimizer = RMSprop(learning_rate=lr_schedule)
 

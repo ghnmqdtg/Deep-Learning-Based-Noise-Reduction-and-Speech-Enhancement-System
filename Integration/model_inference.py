@@ -2,10 +2,9 @@ import tensorflow as tf
 import soundfile as sf
 import numpy as np
 import librosa
-from itertools import islice
 import config_params_integration as config_params
 from NC_inference_plot import inference as NC_inference
-from data_tools import scaled_in, inv_scaled_ou, matrix_spectrogram_to_numpy_audio, scale_dB
+import data_tools
 
 # To load NC and DDAE models
 
@@ -19,26 +18,23 @@ def load_models():
     for model_path in config_params.DDAE_PATHS:
         DDAE_model_list.append(tf.keras.models.load_model(model_path))
 
-    # print(NC_model)
-    # print(DDAE_model_list[0])
-    # print(DDAE_model_list[1])
     return NC_model, DDAE_model_list
 
 
 def DDAE_inference(model, stft_mag, stft_phase):
     # Temporary used
     fix_length = 16384
-    X_in = scaled_in(stft_mag)
+    X_in = data_tools.scaled_in(stft_mag)
     print("X_in:", X_in.shape)
     X_pred = model.predict(X_in)
     print("X_pred:", X_pred.shape)
 
-    inv_sca_X_pred = inv_scaled_ou(X_pred)
+    inv_sca_X_pred = data_tools.inv_scaled_ou(X_pred)
     print("inv_sca_X_pred:", inv_sca_X_pred.shape)
     X_denoise = stft_mag - inv_sca_X_pred
     print("X_denoise:", X_denoise.shape)
 
-    audio_denoise_recons = matrix_spectrogram_to_numpy_audio(
+    audio_denoise_recons = data_tools.matrix_spectrogram_to_numpy_audio(
         X_denoise, stft_phase, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_TEST_IMAGE_DENOISE)
 
     sf.write(f'{config_params.PATH_DIR_PREDICT_ROOT}/{config_params.PATH_PREDICT_OUTPUT_NAME}.wav',
@@ -46,8 +42,8 @@ def DDAE_inference(model, stft_mag, stft_phase):
 
     print(f'{config_params.PATH_DIR_PREDICT_ROOT}/{config_params.PATH_PREDICT_OUTPUT_NAME}.wav')
 
-    scale_dB([f'{config_params.PATH_DIR_PREDICT_ROOT}/{config_params.PATH_PREDICT_OUTPUT_NAME}.wav'],
-             config_params.PATH_DIR_PREDICT_ROOT, -30.0, purepath=True)
+    data_tools.scale_dB([f'{config_params.PATH_DIR_PREDICT_ROOT}/{config_params.PATH_PREDICT_OUTPUT_NAME}.wav'],
+             config_params.PATH_DIR_PREDICT_ROOT, purepath=True)
 
 
 def blockshaped(arr, nrows, ncols):
@@ -76,7 +72,7 @@ if __name__ == "__main__":
 
     print("Loading testing audio...")
     sound, sr = sf.read(
-        'Integration/test_wav/10_noisy_voice_long.wav', dtype='float32')
+        'Integration/test_wav/10_noisy_long.wav', dtype='float32')
     # 'test_wav/noisy_voice_long.wav', dtype='float32')
 
     print("Noise classifying...")

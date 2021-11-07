@@ -14,7 +14,7 @@ def createpath(path):
         os.makedirs(path)
 
 
-def scale_dB(list_audio_files, dB_audio_dir, target_dBFS, purepath=False):
+def scale_dB(list_audio_files, dB_audio_dir, purepath=False):
     '''
     Description:
         1. Load audio files by parsing the `list_audio_files`
@@ -25,7 +25,6 @@ def scale_dB(list_audio_files, dB_audio_dir, target_dBFS, purepath=False):
     Args:
         list_audio_files: a list contains file paths
         dB_audio_dir: path to save the scaled audio
-        target_dBFS: dBFS we want to scale the audio
 
     Returns:
         list_dB_sound: a list contains paths of scaled files
@@ -36,7 +35,7 @@ def scale_dB(list_audio_files, dB_audio_dir, target_dBFS, purepath=False):
     for audio_file in list_audio_files:
         sound = AudioSegment.from_file(audio_file, format="wav")
         loudness = sound.dBFS
-        change_in_dBFS = target_dBFS - loudness
+        change_in_dBFS = config_params.TARGET_dBFS - loudness
 
         scaled_audio = sound.apply_gain(change_in_dBFS)
         list_dB_sound.append(dB_audio_dir+audio_file.split('/')[-1])
@@ -62,25 +61,37 @@ def audio_to_audio_frame_stack(sound_data, frame_length, hop_length_frame):
     return sound_data_array
 
 
-def audio_files_to_numpy(audio_files, sample_rate):
-
+def audio_files_to_numpy(audio_files):
     list_sound = []
 
-    y, sr = librosa.load(audio_files, sr=sample_rate)
+    signal, sr = librosa.load(audio_files, sr=None)
 
-    list_sound.extend(y)
+    # Only resmaple if the sample rate of file is not as specified
+    if sr != config_params.SAMPLE_RATE:
+        signal = librosa.resample(
+            signal, orig_sr=sr, target_sr=config_params.SAMPLE_RATE, res_type='polyphase')
 
+    list_sound.extend(signal)
     array_sound = np.array(list_sound)
-
     return array_sound
 
 
-def set_snr(list_voice_files, list_noise_files, snr, snr_based_dir, sample_rate):
+def set_snr(list_voice_files, list_noise_files, snr, snr_based_dir):
 
     for noise_file in list_noise_files:
 
-        noise, sr_noise = librosa.load(noise_file, sr=sample_rate)
-        voice, sr_voice = librosa.load(list_voice_files[0], sr=sample_rate)
+        noise, sr_noise = librosa.load(noise_file, sr=None)
+        voice, sr_voice = librosa.load(list_voice_files[0], sr=None)
+
+        # Only resmaple if the sample rate of file is not as specified
+        if sr_noise != config_params.SAMPLE_RATE:
+            noise = librosa.resample(
+                noise, orig_sr=sr_noise, target_sr=config_params.SAMPLE_RATE, res_type='polyphase')
+
+        # Only resmaple if the sample rate of file is not as specified
+        if sr_voice != config_params.SAMPLE_RATE:
+            voice = librosa.resample(
+                voice, orig_sr=sr_voice, target_sr=config_params.SAMPLE_RATE, res_type='polyphase')
 
         if snr == np.inf:
             scaler, prescaler = 0, 1
@@ -92,23 +103,30 @@ def set_snr(list_voice_files, list_noise_files, snr, snr_based_dir, sample_rate)
             scaler = np.sqrt(power1 / (power2 * 10.**(snr/10.)))
             prescaler = 1
 
-        
         snr_base_noise_file = snr_based_dir+str(snr)+'_noisy'+'.wav'
-        sf.write(snr_base_noise_file, scaler * noise, sample_rate, 'PCM_24')
+        sf.write(snr_base_noise_file, scaler * noise,
+                 config_params.SAMPLE_RATE, 'PCM_24')
 
     return snr_base_noise_file
 
 
-def noise_files_to_numpy(snr_noise_data, sample_rate, frame_length, hop_length_frame, min_duration):
+def noise_files_to_numpy(snr_noise_data, frame_length, hop_length_frame, min_duration):
 
     list_sound_array = []
 
-    y, sr = librosa.load(snr_noise_data, sr=sample_rate)
-    total_duration = librosa.get_duration(y=y, sr=sr)
+    signal, sr = librosa.load(snr_noise_data, sr=None)
+
+    # Only resmaple if the sample rate of file is not as specified
+    if sr != config_params.SAMPLE_RATE:
+        signal = librosa.resample(
+            signal, orig_sr=sr, target_sr=config_params.SAMPLE_RATE, res_type='polyphase')
+
+    total_duration = librosa.get_duration(
+        y=signal, sr=config_params.SAMPLE_RATE)
 
     if (total_duration >= min_duration):
         list_sound_array.append(audio_to_audio_frame_stack(
-            y, frame_length, hop_length_frame))
+            signal, frame_length, hop_length_frame))
     else:
         print(
             "The following file {os.path.join(audio_dir,file)} is below the min duration")
@@ -121,13 +139,20 @@ def voice_files_to_numpy(list_audio_files, sample_rate, frame_length, hop_length
     list_sound_array = []
 
     for file in list_audio_files:
-        # open the audio file
-        y, sr = librosa.load(file, sr=sample_rate)
-        total_duration = librosa.get_duration(y=y, sr=sr)
+        # Open the audio file
+        signal, sr = librosa.load(file, sr=None)
+
+        # Only resmaple if the sample rate of file is not as specified
+        if sr != config_params.SAMPLE_RATE:
+            signal = librosa.resample(
+                signal, orig_sr=sr, target_sr=config_params.SAMPLE_RATE, res_type='polyphase')
+
+        total_duration = librosa.get_duration(
+            y=signal, sr=config_params.SAMPLE_RATE)
 
         if (total_duration >= min_duration):
             list_sound_array.append(audio_to_audio_frame_stack(
-                y, frame_length, hop_length_frame))
+                signal, frame_length, hop_length_frame))
         else:
             print(
                 "The following file {os.path.join(audio_dir,file)} is below the min duration")
@@ -135,32 +160,30 @@ def voice_files_to_numpy(list_audio_files, sample_rate, frame_length, hop_length
     return np.vstack(list_sound_array)
 
 
-def blend_noise_randomly(voice, noise, nb_samples, frame_length):
+def mix_noise_randomly(voice, noise, nb_samples, frame_length):
 
     prod_voice = np.zeros((nb_samples, frame_length))
     prod_noise = np.zeros((nb_samples, frame_length))
-    prod_noisy_voice = np.zeros((nb_samples, frame_length))
+    prod_noisy = np.zeros((nb_samples, frame_length))
 
     for i in range(nb_samples):
         id_voice = np.random.randint(0, voice.shape[0])
         id_noise = np.random.randint(0, noise.shape[0])
-        #level_noise = np.random.uniform(0.2, 0.8)
         prod_voice[i, :] = voice[id_voice, :]
         prod_noise[i, :] = noise[id_noise, :]
-        #prod_noise[i, :] = level_noise * noise[id_noise, :]
-        prod_noisy_voice[i, :] = prod_voice[i, :] + prod_noise[i, :]
+        prod_noisy[i, :] = prod_voice[i, :] + prod_noise[i, :]
 
-    return prod_voice, prod_noise, prod_noisy_voice
+    return prod_voice, prod_noise, prod_noisy
 
 
-def split_into_one_second(sound_data, save_dir, sample_rate, snr, category):
-
-    # audio, sr = librosa.load(sound_data, sr=sample_rate)
+def split_into_one_second(sound_data, save_dir, snr, category):
     # get_duration: get the length of the secs
-    total_duration = librosa.get_duration(y=sound_data, sr=sample_rate)
+    total_duration = librosa.get_duration(
+        y=sound_data, sr=config_params.SAMPLE_RATE)
     splitted_audio_list = []
     save_corpped_list = []
     count = 0
+
     if(category):
         for time in range(0, int(total_duration)*16000, config_params.SLICE_LENGTH):
             count += 1
@@ -173,7 +196,7 @@ def split_into_one_second(sound_data, save_dir, sample_rate, snr, category):
             splitted_audio_list.append(SplittedAudio)
             # print(save_dir, snr, category)
             sf.write(save_dir + str(snr) + '/' + str(category) + '_' +
-                     str(count)+'.wav', SplittedAudio, sample_rate, 'PCM_24')
+                     str(count)+'.wav', SplittedAudio, config_params.SAMPLE_RATE, 'PCM_24')
     else:
         for time in range(0, int(total_duration)*16000, config_params.SLICE_LENGTH):
             count += 1
@@ -184,11 +207,11 @@ def split_into_one_second(sound_data, save_dir, sample_rate, snr, category):
                 continue
             splitted_audio_list.append(SplittedAudio)
             sf.write(save_dir + str(snr) + '/' + str(count) + '.wav',
-                     SplittedAudio, sample_rate, 'PCM_24')
+                     SplittedAudio, config_params.SAMPLE_RATE, 'PCM_24')
             save_corpped_list.extend(SplittedAudio)
 
         sf.write(save_dir + str(snr) + '/' + 'Cropped.wav',
-                 np.vstack(save_corpped_list), sample_rate, 'PCM_24')
+                 np.vstack(save_corpped_list), config_params.SAMPLE_RATE, 'PCM_24')
 
     return splitted_audio_list
 
@@ -218,38 +241,32 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio, i, path_save_i
     return stftaudio_magnitude_db, stftaudio_phase
 
 
-def numpy_audio_to_matrix_spectrogram(numpy_audio, dim_square_spec, n_fft, hop_length_fft, path_save_image):
+def numpy_audio_to_matrix_spectrogram(numpy_audio, path_save_image):
     '''
     Args:
         numpy_audio: the numpy array of audio
-        dim_square_spec: int, the dimension of the square spectrogram
-                         default = int(n_fft / 2) + 1 = 256
-        n_fft: int, default = 511
-        hop_length_fft: int, default = 313
         path_save_image: str, path to save the spectrogram
 
     Returns:
-        m_mag_db: magnitude in dB
-        m_phase: phase of magnitude
+        mag_db: magnitude in dB
+        mag_phase: phase of magnitude
     '''
     nb_audio = numpy_audio.shape[0]
 
     mag_tmp, _ = audio_to_magnitude_db_and_phase(
-        n_fft, hop_length_fft, numpy_audio[0], 0, path_save_image)
+        config_params.N_FFT, config_params.HOP_LENGTH_FFT, numpy_audio[0], 0, path_save_image)
 
     mag_shape = mag_tmp.shape
 
-    m_mag_db = np.zeros((nb_audio, mag_shape[0], mag_shape[1]))
-    m_phase = np.zeros(
+    mag_db = np.zeros((nb_audio, mag_shape[0], mag_shape[1]))
+    mag_phase = np.zeros(
         (nb_audio, mag_shape[0], mag_shape[1]), dtype=complex)
 
     for i in range(nb_audio):
-        m_mag_db[i, :, :], m_phase[i, :, :] = audio_to_magnitude_db_and_phase(
-            n_fft, hop_length_fft, numpy_audio[i], i, path_save_image)
+        mag_db[i, :, :], mag_phase[i, :, :] = audio_to_magnitude_db_and_phase(
+            config_params.N_FFT, config_params.HOP_LENGTH_FFT, numpy_audio[i], i, path_save_image)
 
-    # print(m_mag_db.shape)
-
-    return m_mag_db, m_phase
+    return mag_db, mag_phase
 
 
 def scaled_in(matrix_spec):
@@ -264,47 +281,48 @@ def scaled_ou(matrix_spec):
     return matrix_spec
 
 
-def audio_files_add_to_numpy(list_audio_files, sample_rate):
-
+def audio_files_add_to_numpy(list_audio_files):
     list_sound = []
 
     for file in list_audio_files:
-        # y: [-2.4414062e-04 -3.0517578e-05  1.8310547e-04 ...  1.2207031e-04
-        # 9.1552734e-05  1.2207031e-04]
-        # y, sr = librosa.load(file, sr=sample_rate)
-        y, sr = librosa.load(file, sr=None)
+        signal, sr = librosa.load(file, sr=None)
 
-        list_sound.extend(y)
+        # Only resmaple if the sample rate of file is not as specified
+        if sr != config_params.SAMPLE_RATE:
+            signal = librosa.resample(
+                signal, orig_sr=sr, target_sr=config_params.SAMPLE_RATE, res_type='polyphase')
+
+        list_sound.extend(signal)
 
     array_sound = np.array(list_sound)
 
     return array_sound
 
 
-def blend_noise_voice(voice, noise):
+def mix_noise_voice(voice, noise):
 
     # If the length of voice is longer than the noise
     # use the length of the noise as the length of the produced noisy voice
     if (voice.shape[0] >= noise.shape[0]):
-        prod_noisy_voice = np.zeros((noise.shape[0]))
+        prod_noisy = np.zeros((noise.shape[0]))
         prod_noise = np.zeros((noise.shape[0]))
         prod_voice = np.zeros((noise.shape[0]))
 
         for i in range(noise.shape[0]):
             prod_noise[i, ] = noise[i, ]
             prod_voice[i, ] = voice[i, ]
-            prod_noisy_voice[i, ] = prod_voice[i, ] + prod_noise[i, ]
+            prod_noisy[i, ] = prod_voice[i, ] + prod_noise[i, ]
     else:
-        prod_noisy_voice = np.zeros((voice.shape[0]))
+        prod_noisy = np.zeros((voice.shape[0]))
         prod_noise = np.zeros((voice.shape[0]))
         prod_voice = np.zeros((voice.shape[0]))
 
         for i in range(voice.shape[0]):
             prod_noise[i, ] = noise[i, ]
             prod_voice[i, ] = voice[i, ]
-            prod_noisy_voice[i, ] = prod_voice[i, ] + prod_noise[i, ]
+            prod_noisy[i, ] = prod_voice[i, ] + prod_noise[i, ]
 
-    return prod_voice, prod_noise, prod_noisy_voice
+    return prod_voice, prod_noise, prod_noisy
 
 
 def inv_scaled_ou(matrix_spec):
@@ -325,22 +343,22 @@ def magnitude_db_and_phase_to_audio(hop_length_fft, stftaudio_magnitude_db, stft
     return audio_reconstruct
 
 
-def matrix_spectrogram_to_numpy_audio(m_mag_db, m_phase, hop_length_fft, fix_length, path_save_image):
+def matrix_spectrogram_to_numpy_audio(mag_db, mag_phase, fix_length, path_save_image):
 
     list_audio = []
 
-    nb_spec = m_mag_db.shape[0]
+    nb_spec = mag_db.shape[0]
 
     for i in range(nb_spec):
 
         plt.imsave(os.path.join(path_save_image, str(i) + ".png"),
-                   m_mag_db[i], cmap='jet')
+                   mag_db[i], cmap='jet')
 
         audio_reconstruct = magnitude_db_and_phase_to_audio(
-            hop_length_fft, m_mag_db[i], m_phase[i])
+            config_params.HOP_LENGTH_FFT, mag_db[i], mag_phase[i])
 
         audio_reconstruct = librosa.util.fix_length(
-            audio_reconstruct, fix_length)  # ADD
+            audio_reconstruct, fix_length)
 
         list_audio.extend(audio_reconstruct)
 

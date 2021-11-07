@@ -119,27 +119,25 @@ def numpy_audio_to_matrix_spectrogram(numpy_audio, fft_length, hop_length):
     span = int(vggish_params.EXAMPLE_WINDOW_SECONDS *
                vggish_params.SAMPLE_RATE)
 
-    m_mag = np.zeros((129, 63))
-    m_phase = np.zeros((129, 63), dtype=complex)
+    mag_amp = np.zeros((129, 63))
+    mag_phase = np.zeros((129, 63), dtype=complex)
 
     for time in range(0, numpy_audio.shape[0], span):
         start = time
         end = time + span
         data = numpy_audio[start:end]
 
-        m_mag_temp = np.zeros((129, 63))
-        m_phase_temp = np.zeros((129, 63), dtype=complex)
+        mag_amp_temp = np.zeros((129, 63))
+        mag_phase_temp = np.zeros((129, 63), dtype=complex)
 
         if (data.shape[0] == span):
-            m_mag_temp[:, :], m_phase_temp[:, :] = audio_to_magnitude_db_and_phase(
+            mag_amp_temp[:, :], mag_phase_temp[:, :] = audio_to_magnitude_db_and_phase(
                 data, fft_length, hop_length)
 
-            m_mag = np.hstack((m_mag, m_mag_temp))
-            m_phase = np.hstack((m_phase, m_phase_temp))
+            mag_amp = np.hstack((mag_amp, mag_amp_temp))
+            mag_phase = np.hstack((mag_phase, mag_phase_temp))
 
-    # print(m_mag[:, 63:])
-
-    return (m_mag[:, 63:], m_phase[:, 63:])
+    return (mag_amp[:, 63:], mag_phase[:, 63:])
 
 
 # Mel spectrum constants and functions.

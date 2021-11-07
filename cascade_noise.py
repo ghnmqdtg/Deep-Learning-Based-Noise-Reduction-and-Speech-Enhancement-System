@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     # # Save as a single file
     # sf.write("./demo_data/Vechicles/test/NOISE/vechicles_evaluation.wav", audio_files_add_to_numpy(
-    #     list_noise_files, 16000), 16000, 'PCM_24')
+    #     list_noise_files), 16000, 'PCM_24')
 
     one_sec_sound = slice_into_one_second(
         "./demo_data/Vechicles/save_predictions/0_denoise_t2.wav")

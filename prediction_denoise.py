@@ -1,9 +1,5 @@
-import librosa
-from numba.core import config
-import tensorflow as tf
-from tensorflow.keras.models import model_from_json, load_model
-from data_tools import scale_dB, set_snr, audio_files_add_to_numpy, audio_files_to_numpy, blend_noise_voice, split_into_one_second
-from data_tools import numpy_audio_to_matrix_spectrogram, scaled_in, inv_scaled_ou, matrix_spectrogram_to_numpy_audio
+from tensorflow.keras.models import load_model
+import data_tools
 import os
 import numpy as np
 import soundfile as sf
@@ -48,101 +44,81 @@ def prediction():
             files = os.path.join(root, f)
             list_voice_files.append(files)
 
-    target_dBFS = -30.0
-    list_dB_noise_file = scale_dB(
-        list_noise_files, config_params.PATH_DIR_TEST_NOISE_dB, target_dBFS)
-    list_dB_voice_file = scale_dB(
-        list_voice_files, config_params.PATH_DIR_TEST_VOICE_dB, target_dBFS)
+    list_dB_noise_file = data_tools.scale_dB(
+        list_noise_files, config_params.PATH_DIR_TEST_NOISE_dB)
+    list_dB_voice_file = data_tools.scale_dB(
+        list_voice_files, config_params.PATH_DIR_TEST_VOICE_dB)
 
     list_noise_files.clear()
     list_voice_files.clear()
 
     print("Setting snr...")
-    # SNR = [15, 10, 0, -10, -20]
     SNR = [15, 10, 5, 0, -5, -10]
     for snr in SNR:
         createpath(config_params.PATH_DIR_TEST_SPLIT_NOISY + str(snr) + '/')
         createpath(config_params.PATH_DIR_TEST_SPLIT_VOICE + str(snr) + '/')
-        snr_base_noise_file = set_snr(
-            list_dB_voice_file, list_dB_noise_file, snr, config_params.PATH_DIR_TEST_SNR_BASED, config_params.SAMPLE_RATE)
+        snr_base_noise_file = data_tools.set_snr(
+            list_dB_voice_file, list_dB_noise_file, snr, config_params.PATH_DIR_TEST_SNR_BASED)
         list_noise_snr_files.append(snr_base_noise_file)
 
+    print(f'Loading Model: {config_params.PATH_WEIGHTS}')
     loaded_model = load_model(config_params.PATH_WEIGHTS)
-    # TFLITE
+
     for snr_noise_data in list_noise_snr_files:
-
-        snr = snr_noise_data.split('/')[-1].split('_')[0]
-        print('snr:', snr)
-
-        noise = audio_files_to_numpy(snr_noise_data, config_params.SAMPLE_RATE)
-
-        voice = audio_files_add_to_numpy(
-            list_dB_voice_file, config_params.SAMPLE_RATE)
-
-        print("Blending...")
-        prod_voice, prod_noise, prod_noisy_voice = blend_noise_voice(voice, noise)
-
-        sf.write(config_params.PATH_DIR_TEST_NOISY + str(snr) + '_noisy.wav',
-                 prod_noise, config_params.SAMPLE_RATE, 'PCM_24')
-        sf.write(config_params.PATH_DIR_TEST_NOISY + str(snr) + '_voice.wav',
-                 prod_voice, config_params.SAMPLE_RATE, 'PCM_24')
-        sf.write(config_params.PATH_DIR_TEST_NOISY + str(snr) + '_noisy_voice_long.wav',
-                 prod_noisy_voice, config_params.SAMPLE_RATE, 'PCM_24')
-
         cropped_list_noisy = []
-        cropped_list_voice = []
+        output_audio_list = []
+        snr = snr_noise_data.split('/')[-1].split('_')[0]
+        print('SNR:', snr)
+
+        noise = data_tools.audio_files_to_numpy(snr_noise_data)
+        voice = data_tools.audio_files_add_to_numpy(list_dB_voice_file)
+
+        print("Mixing...")
+        prod_voice, prod_noise, prod_noisy = data_tools.mix_noise_voice(
+            voice, noise)
+
+        # sf.write(f'{config_params.PATH_DIR_TEST_NOISY}/{snr}_voice.wav',
+        #          prod_voice, config_params.SAMPLE_RATE, 'PCM_24')
+        # sf.write(f'{config_params.PATH_DIR_TEST_NOISY}/{snr}_noise.wav',
+        #          prod_noise, config_params.SAMPLE_RATE, 'PCM_24')
+        sf.write(f'{config_params.PATH_DIR_TEST_NOISY}/{snr}_noisy.wav',
+                 prod_noisy, config_params.SAMPLE_RATE, 'PCM_24')
 
         print("Cropping raw data...")
-        cropped_list_noisy.extend(split_into_one_second(
-            prod_noisy_voice, config_params.PATH_DIR_TEST_SPLIT_NOISY, config_params.SAMPLE_RATE, snr, False))
-        cropped_list_voice.extend(split_into_one_second(
-            prod_voice, config_params.PATH_DIR_TEST_SPLIT_VOICE, config_params.SAMPLE_RATE, snr, False))
-
-        dim_square_spec = int(config_params.N_FFT / 2) + 1
+        cropped_list_noisy.extend(data_tools.split_into_one_second(
+            prod_noisy, config_params.PATH_DIR_TEST_SPLIT_NOISY, snr, False))
 
         cropped_array_noisy = np.array(cropped_list_noisy)
-        cropped_array_voice = np.array(cropped_list_voice)
-
-        # print(cropped_list_voice)
-        # print(cropped_array_voice)
-        # sf.write(config_params.PATH_DIR_PREDICT_ROOT + 'Clean.wav',
-        #          cropped_array_voice, sample_rate, 'PCM_24')
 
         print("cropped_array_noisy:", cropped_array_noisy.shape)
-        print("cropped_array_voice:", cropped_array_voice.shape)
         fix_length = cropped_array_noisy.shape[1]
         print(config_params.HOP_LENGTH_FFT, fix_length)
 
-        m_amp_db_voice,  m_pha_voice = numpy_audio_to_matrix_spectrogram(
-            cropped_array_voice, dim_square_spec, config_params.N_FFT, config_params.HOP_LENGTH_FFT, config_params.PATH_DIR_TEST_IMAGE_VOICE)
+        mag_amp_db_noisy,  mag_phase_noisy = data_tools.numpy_audio_to_matrix_spectrogram(
+            cropped_array_noisy, config_params.PATH_DIR_TEST_IMAGE_NOISY)
 
-        m_amp_db_noisy_voice,  m_pha_noisy_voice = numpy_audio_to_matrix_spectrogram(
-            cropped_array_noisy, dim_square_spec, config_params.N_FFT, config_params.HOP_LENGTH_FFT, config_params.PATH_DIR_TEST_IMAGE_NOISY)
-
-        X_in = scaled_in(m_amp_db_noisy_voice)
-        print("X_in:", X_in.shape)
+        X_in = data_tools.scaled_in(mag_amp_db_noisy)
         X_pred = loaded_model.predict(X_in)
-        print("X_pred:", X_pred.shape)
+        inv_sca_X_pred = data_tools.inv_scaled_ou(X_pred)
+        X_denoise = mag_amp_db_noisy - inv_sca_X_pred
 
-        inv_sca_X_pred = inv_scaled_ou(X_pred)
+        print("X_in:", X_in.shape)
+        print("X_pred:", X_pred.shape)
         print("inv_sca_X_pred:", inv_sca_X_pred.shape)
-        X_denoise = m_amp_db_noisy_voice - inv_sca_X_pred
         print("X_denoise:", X_denoise.shape)
 
-        audio_denoise_recons = matrix_spectrogram_to_numpy_audio(
-            X_denoise, m_pha_noisy_voice, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_TEST_IMAGE_DENOISE)
-        config_params.NB_SAMPLES = audio_denoise_recons.shape[0]
+        audio_denoise_recons = data_tools.matrix_spectrogram_to_numpy_audio(
+            X_denoise, mag_phase_noisy, fix_length, config_params.PATH_DIR_TEST_IMAGE_DENOISE)
 
-        #denoise_long = audio_denoise_recons.reshape(1, config_params.NB_SAMPLES * config_params.FRAME_SIZE)*10
-        sf.write(config_params.PATH_DIR_PREDICT_ROOT + snr + '_' + config_params.PATH_PREDICT_OUTPUT_NAME,
-                 audio_denoise_recons, config_params.SAMPLE_RATE, 'PCM_24')
+        sf.write(
+            f'{config_params.PATH_DIR_PREDICT_ROOT}/{snr}_{config_params.PATH_PREDICT_OUTPUT_NAME}', audio_denoise_recons, config_params.SAMPLE_RATE, 'PCM_24')
 
-        output_audio_list = []
         output_audio_list.append(
-            config_params.PATH_DIR_PREDICT_ROOT + snr + '_' + config_params.PATH_PREDICT_OUTPUT_NAME)
-        scale_dB(output_audio_list,
-                 config_params.PATH_DIR_PREDICT_ROOT, target_dBFS)
-        print("\n")
+            f'{config_params.PATH_DIR_PREDICT_ROOT}/{snr}_{config_params.PATH_PREDICT_OUTPUT_NAME}')
+
+        data_tools.scale_dB(output_audio_list, config_params.PATH_DIR_PREDICT_ROOT, purepath=True)
+
+        print("")
 
 
 if __name__ == '__main__':
