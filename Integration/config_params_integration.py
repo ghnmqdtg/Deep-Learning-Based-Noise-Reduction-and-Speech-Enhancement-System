@@ -18,7 +18,7 @@ DDAE_PATHS = [
     f'./Integration//model_files/DDAE_{config_params.MODEL}_{cls}.h5' for cls in NOISE_LIST]
 
 # Save paths
-PATH_DIR_SAVE_IMAGE_DENOISE = './Integration/test_wav/Denoised/images'
+PATH_DIR_TEST_IMAGE_DENOISE = './Integration/test_wav/Denoised/images'
 PATH_DIR_PREDICT_ROOT = './Integration/test_wav/Denoised/audio'
 PATH_PREDICT_OUTPUT_NAME = 'denoised'
 

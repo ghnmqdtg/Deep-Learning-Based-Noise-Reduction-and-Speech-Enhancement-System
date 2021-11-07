@@ -39,7 +39,7 @@ def DDAE_inference(model, stft_mag, stft_phase):
     print("X_denoise:", X_denoise.shape)
 
     audio_denoise_recons = matrix_spectrogram_to_numpy_audio(
-        X_denoise, stft_phase, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_SAVE_IMAGE_DENOISE)
+        X_denoise, stft_phase, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_TEST_IMAGE_DENOISE)
 
     sf.write(f'{config_params.PATH_DIR_PREDICT_ROOT}/{config_params.PATH_PREDICT_OUTPUT_NAME}.wav',
              audio_denoise_recons, config_params.SAMPLE_RATE, 'PCM_24')
