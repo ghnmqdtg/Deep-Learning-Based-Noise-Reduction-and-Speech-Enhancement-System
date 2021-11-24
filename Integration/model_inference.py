@@ -7,8 +7,6 @@ from NC_inference_plot import inference as NC_inference
 import data_tools
 
 # To load NC and DDAE models
-
-
 def load_models():
     # Define a null list for DDAE models
     DDAE_model_list = []
@@ -35,7 +33,7 @@ def DDAE_inference(model, stft_mag, stft_phase):
     print("X_denoise:", X_denoise.shape)
 
     audio_denoise_recons = data_tools.matrix_spectrogram_to_numpy_audio(
-        X_denoise, stft_phase, config_params.HOP_LENGTH_FFT, fix_length, config_params.PATH_DIR_TEST_IMAGE_DENOISE)
+        X_denoise, stft_phase, fix_length, config_params.PATH_DIR_TEST_IMAGE_DENOISE)
 
     sf.write(f'{config_params.PATH_DIR_PREDICT_ROOT}/{config_params.PATH_PREDICT_OUTPUT_NAME}.wav',
              audio_denoise_recons, config_params.SAMPLE_RATE, 'PCM_24')
@@ -72,7 +70,7 @@ if __name__ == "__main__":
 
     print("Loading testing audio...")
     sound, sr = sf.read(
-        'Integration/test_wav/10_noisy_long.wav', dtype='float32')
+        'Integration/test_wav/Noisy/-10_noisy.wav', dtype='float32')
     # 'test_wav/noisy_voice_long.wav', dtype='float32')
 
     print("Noise classifying...")
@@ -92,10 +90,8 @@ if __name__ == "__main__":
         if index == 0:
             print("Household_Appliance")
         elif index == 1:
-            print("TVnRadio")
-        elif index == 2:
             print("Vechicles")
-        elif index == 3:
+        elif index == 2:
             print("Verbal_Human")
 
     stft_mag_db = librosa.amplitude_to_db(
