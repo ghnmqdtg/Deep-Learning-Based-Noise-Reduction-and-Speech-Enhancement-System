@@ -21,7 +21,8 @@ In this repo, we only provide codes of data preprocessing, model training and mo
 ## Datasets
 The goal of this project is to recognize the noise in the input audio and clean them out with deep learning techniques. We mix clean voice and noises together as training input, and clean voice as output.
 
-As we all know, the data you use is more important than the model itself. We choose TIMIT as clean voice dataset. And according to [*Sounds perceived as annoying by hearing-aid users in their daily soundscape*](https://www.researchgate.net/publication/260093127_Sounds_perceived_as_annoying_by_hearing-aid_users_in_their_daily_soundscape), we select four categories of noise that respondents mentioned most, which are verbal human sounds, TV/radio, vehicles and household appliances as the goal that we want to clean out from the input audio. We sort out the labels from Audioset to build our target noise categories.
+As we all know, the data you use is more important than the model itself. We choose TIMIT as clean voice dataset. And according to [*Sounds perceived as annoying by hearing-aid users in their daily soundscape*](https://www.researchgate.net/publication/260093127_Sounds_perceived_as_annoying_by_hearing-aid_users_in_their_daily_soundscape), we select four categories of noise that respondents mentioned most, which are verbal human sounds, TV/radio, vehicles and household appliances as the goal that we want to clean out from the input audio.
+
 
 ## Models
 ### Noise Classifier, NC
@@ -56,23 +57,37 @@ File desciption:
 
 DDAE is one of the derivatives of the autoencoder. Autoencoders are neural networks trained in an unsupervised way to attempt to copy inputs to outputs. And denoise autoencoder(DAE) is trained to reduce the noise from the input. In this project, we add multiple layers to the DAE and makes it DDAE.
 
-After preprocessing the input audio to the spectrogram, we feed it to the trained DDAE model, and the model will reduce the noise from the input, then you will get a clean spectrogram. You will need to do the inverse DSP to convert is to a listenable wav file or output it instantly.
+Our preprocessing will output 0.5 sec STFT spectrogram, and we accumulate 1 sec of it as the input of DDAE. We feed it to the trained DDAE model, and the model will reduce the noise from the input, then the program will convert the clean spectrogram to `.wav` files.
+
+
+- Dataset: TIMIT mixed with AudioSet
+- Preprocessing reference: VGGish but without converting to Mel spectrogram
+- `config_params.py`: Configuration of the whole DDAE training process
+- `prepare_data.py`: Used to prepare data in `.h5` format
+- `DDAE.py`: The model itself
+- `prediction_denoise.py`: Used to validate the model
 
 # Results
 ### Noise Classifier, NC
-![](https://i.imgur.com/ikwvxMc.png)
+Our original purpose is to classify 4 classes of noise. We found that the "TV/radio" is too similar to "Human noise", which cause accuracy down to 51%, so we had to abandon it. Finally, the accuracy of the 3 classes of noise was raised to 71%.
+
+Every picture with 3 subplots in the table below shows the result of classifying different noises.
+- Subplot 1: The waveform of the input
+- Subplot 2: The spectrogram of the input
+- Subplot 3: The probability of every kind of noises. Our NC classify the noise every 0.5 sec. The darker the colour the higher the probability.
 
 |        Class         |               Results                |
 |:--------------------:|:------------------------------------:|
-|     Human sounds     | ![](https://i.imgur.com/iqorlX3.png) |
+|     Human noise     | ![](https://i.imgur.com/iqorlX3.png) |
 |       Vehicles       | ![](https://i.imgur.com/BVOs7x9.png) |
 | Household appliances | ![](https://i.imgur.com/0ERrEBV.png) |
-|                      |                                      |
 
 ### Deep Denoising Autoencoder, DDAE
 ![](https://i.imgur.com/v45r9Mc.png)
 
+The following pictures are the spectrograms of clean voice, mixed audio and denoised audio. The XY axis represents time and frequency. The red colour shows higher energy at the specific time and frequency and the blue colour vice versa.
 
+Take household appliances as an example, you may find those different SNRs perform different consequences. Higher SNR gets a better result.
 
 | SNR |             Clean Voice              |                Mixed                 |               Denoised               |
 |:---:|:------------------------------------:|:------------------------------------:|:------------------------------------:|
@@ -82,3 +97,12 @@ After preprocessing the input audio to the spectrogram, we feed it to the traine
 |  5  | ![](https://i.imgur.com/LA527kY.png) | ![](https://i.imgur.com/hnOHWkz.png) | ![](https://i.imgur.com/hgVe0ey.png) |
 | 10  | ![](https://i.imgur.com/P0eWIzy.png) | ![](https://i.imgur.com/EQDW0BS.png) | ![](https://i.imgur.com/GRmGLsB.png) |
 | 15  | ![](https://i.imgur.com/cX0rkID.png) | ![](https://i.imgur.com/zsVBgnu.png) | ![](https://i.imgur.com/X5Why2f.png) |
+
+Also, we found that those clean areas become dirty after denoising. That's because the model learned lots of different data, and the spectrogram of those data is arbitrary and has randomness and diversity.
+
+# Related Links
+- Intro Video: https://youtu.be/4SeVdtuW-P8
+- Project Doc (in Mandarin): https://reurl.cc/k770jb
+- Poster: https://reurl.cc/EppzM1
+- Preprocessing Unit: https://github.com/Dodoesdid/Mel_Librosa
+- Noise classifier: https://github.com/qqq89513/NOISE_CLASSIFIER
