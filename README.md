@@ -106,3 +106,14 @@ Also, we found that those clean areas become dirty after denoising. That's becau
 - Poster: https://reurl.cc/EppzM1
 - Preprocessing Unit: https://github.com/Dodoesdid/Mel_Librosa
 - Noise classifier: https://github.com/qqq89513/NOISE_CLASSIFIER
+
+# References
+- Lai YH, Tsao Y, Lu X, Chen F, Su YT, Chen KC, Chen YH, Chen LC, Po-Hung Li L, Lee CH. Deep Learning-Based Noise Reduction Approach to Improve Speech Intelligibility for Cochlear Implant Recipients. Ear Hear. 2018 Jul/Aug;39(4):795-809. doi: 10.1097/AUD.0000000000000537. PMID: 29360687.
+- Ephraim, Y., & Malah, D. (1985). Speech enhancement using a minimum mean-square error log-spectral amplitude estimator. IEEE Trans Acoustics Speech Signal Process, 33, 443–445.
+- Scalart, P. (1996). Speech enhancement based on a priori signal to noise estimation. Proc Int Conf Acoust Speech Signal Process, 2, 629–633.
+- Rezayee, A., & Gazor, S. (2001). An adaptive KLT approach for speech enhancement. IEEE Trans Speech Audio Process, 9, 87–95.
+- Loizou, P. C. (2013). Speech Enhancement: Theory and Practice. Boca Raton, FL: CRC press.
+- Lu, X., Tsao, Y., Matsuda, S., et al. (2013). Speech enhancement based on deep denoising autoencoder. Proc Interspeech ( pp. 436–440). International Speech Communication Association.
+- Junyoung Chung, Caglar Gulcehre, KyungHyun Cho and Yoshua Bengio. Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling. (2014)
+- Maciej Wielgosza,c, Andrzej Skocze´nb and Matej Mertikc. Recurrent Neural Networks for anomaly detection in thePost-Mortem time series of LHC superconducting magnets. (2017)
+- Asa Skagerstrand, Stefan Stenfelt, Stig Arlinger. Sounds perceived as annoying by hearing-aid users in their daily soundscape. (2014)
