@@ -67,6 +67,11 @@ Our preprocessing will output 0.5 sec STFT spectrogram, and we accumulate 1 sec 
 - `DDAE.py`: The model itself
 - `prediction_denoise.py`: Used to validate the model
 
+# How to prepare the dataset? 
+- NC: Please check [NC's repo](https://github.com/qqq89513/NOISE_CLASSIFIER).
+- DDAE: Download our pre-prepared dataset from [Google Drive](https://drive.google.com/file/d/1eiRYFSOqBTPAJabmzAV5s0pQaqCE-OVg/view?usp=sharing) and unzip it to the root directory of the repo. Then run the `prepare_data.py`.
+
+
 # Results
 ### Noise Classifier, NC
 Our original purpose is to classify 4 classes of noise. We found that the "TV/radio" is too similar to "Human noise", which cause accuracy down to 51%, so we had to abandon it. Finally, the accuracy of the 3 classes of noise was raised to 71%.
